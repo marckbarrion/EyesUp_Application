@@ -17,86 +17,86 @@ import java.io.InputStream
 import java.io.InputStreamReader
 
 class Detector (
-    private val context: Context,
-    private val modelPath: String,
-    private val labelPath: String,
-    private val detectorListener: DetectorListener
+    private val context: Context,  // Application context
+    private val modelPath: String,  // Path to the model file
+    private val labelPath: String,  // Path to the labels file
+    private val detectorListener: DetectorListener  // Listener for detection results
 ) {
 
-    private var interpreter: Interpreter? = null
-    private var labels = mutableListOf<String>()
+    private var interpreter: Interpreter? = null  // TFLite interpreter
+    private var labels = mutableListOf<String>()  // List of labels
 
-    private var tensorWidth = 0
-    private var tensorHeight = 0
-    private var numElements = 0
+    private var tensorWidth = 0  // Width of the input tensor
+    private var tensorHeight = 0  // Height of the input tensor
+    private var numElements = 0  // Number of output elements
 
     private val imageProcessor = ImageProcessor.Builder()
-        .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))
-        .add(CastOp(INPUT_IMAGE_TYPE))
+        .add(NormalizeOp(INPUT_MEAN, INPUT_STANDARD_DEVIATION))  // Normalize image
+        .add(CastOp(INPUT_IMAGE_TYPE))  // Cast image type
         .build()
 
     fun setup() {
-        val model = FileUtil.loadMappedFile(context, modelPath)
+        val model = FileUtil.loadMappedFile(context, modelPath)  // Load TFLite model
         val options = Interpreter.Options()
-        options.numThreads = 4
-        interpreter = Interpreter(model, options)
+        options.numThreads = 4  // Set number of threads for inference
+        interpreter = Interpreter(model, options)  // Initialize interpreter
 
-        val inputShape = interpreter?.getInputTensor(0)?.shape() ?: return
-        val outputShape = interpreter?.getOutputTensor(0)?.shape() ?: return
+        val inputShape = interpreter?.getInputTensor(0)?.shape() ?: return  // Get input tensor shape
+        val outputShape = interpreter?.getOutputTensor(0)?.shape() ?: return  // Get output tensor shape
 
-        tensorWidth = inputShape[1]
-        tensorHeight = inputShape[2]
-        numElements = outputShape[1] // YOLOv5 output is 1x25200x8
+        tensorWidth = inputShape[1]  // Set tensor width
+        tensorHeight = inputShape[2]  // Set tensor height
+        numElements = outputShape[1]  // Set number of elements in output tensor
 
         try {
-            val inputStream: InputStream = context.assets.open(labelPath)
+            val inputStream: InputStream = context.assets.open(labelPath)  // Open labels file
             val reader = BufferedReader(InputStreamReader(inputStream))
 
             var line: String? = reader.readLine()
             while (line != null && line != "") {
-                labels.add(line)
+                labels.add(line)  // Read and add labels to list
                 line = reader.readLine()
             }
 
             reader.close()
             inputStream.close()
         } catch (e: IOException) {
-            e.printStackTrace()
+            e.printStackTrace()  // Handle IOException
         }
     }
 
     fun clear() {
-        interpreter?.close()
+        interpreter?.close()  // Close interpreter
         interpreter = null
     }
 
     fun detect(frame: Bitmap) {
-        interpreter ?: return
-        if (tensorWidth == 0) return
-        if (tensorHeight == 0) return
-        if (numElements == 0) return
+        interpreter ?: return  // Return if interpreter is null
+        if (tensorWidth == 0) return  // Return if tensor width is 0
+        if (tensorHeight == 0) return  // Return if tensor height is 0
+        if (numElements == 0) return  // Return if numElements is 0
 
-        var inferenceTime = SystemClock.uptimeMillis()
+        var inferenceTime = SystemClock.uptimeMillis()  // Start timing inference
 
-        val resizedBitmap = Bitmap.createScaledBitmap(frame, tensorWidth, tensorHeight, false)
+        val resizedBitmap = Bitmap.createScaledBitmap(frame, tensorWidth, tensorHeight, false)  // Resize frame
 
         val tensorImage = TensorImage(DataType.FLOAT32)
-        tensorImage.load(resizedBitmap)
-        val processedImage = imageProcessor.process(tensorImage)
-        val imageBuffer = processedImage.buffer
+        tensorImage.load(resizedBitmap)  // Load bitmap into TensorImage
+        val processedImage = imageProcessor.process(tensorImage)  // Process image
+        val imageBuffer = processedImage.buffer  // Get image buffer
 
-        val output = TensorBuffer.createFixedSize(intArrayOf(1, numElements, 8), OUTPUT_IMAGE_TYPE)
-        interpreter?.run(imageBuffer, output.buffer)
+        val output = TensorBuffer.createFixedSize(intArrayOf(1, numElements, 8), OUTPUT_IMAGE_TYPE)  // Create output buffer
+        interpreter?.run(imageBuffer, output.buffer)  // Run model inference
 
-        val bestBoxes = bestBox(output.floatArray)
-        inferenceTime = SystemClock.uptimeMillis() - inferenceTime
+        val bestBoxes = bestBox(output.floatArray)  // Get best bounding boxes
+        inferenceTime = SystemClock.uptimeMillis() - inferenceTime  // Calculate inference time
 
         if (bestBoxes == null) {
-            detectorListener.onEmptyDetect()
+            detectorListener.onEmptyDetect()  // Notify listener if no boxes detected
             return
         }
 
-        detectorListener.onDetect(bestBoxes, inferenceTime)
+        detectorListener.onDetect(bestBoxes, inferenceTime)  // Notify listener with detection results
     }
 
     private fun bestBox(array: FloatArray): List<BoundingBox>? {
@@ -141,24 +141,24 @@ class Detector (
 
         if (boundingBoxes.isEmpty()) return null
 
-        return applyNMS(boundingBoxes)
+        return applyNMS(boundingBoxes)  // Apply Non-Maximum Suppression
     }
 
     private fun applyNMS(boxes: List<BoundingBox>): MutableList<BoundingBox> {
-        val sortedBoxes = boxes.sortedByDescending { it.cnf }.toMutableList()
+        val sortedBoxes = boxes.sortedByDescending { it.cnf }.toMutableList()  // Sort boxes by confidence
         val selectedBoxes = mutableListOf<BoundingBox>()
 
         while (sortedBoxes.isNotEmpty()) {
             val first = sortedBoxes.first()
-            selectedBoxes.add(first)
+            selectedBoxes.add(first)  // Select the highest confidence box
             sortedBoxes.remove(first)
 
             val iterator = sortedBoxes.iterator()
             while (iterator.hasNext()) {
                 val nextBox = iterator.next()
-                val iou = calculateIoU(first, nextBox)
+                val iou = calculateIoU(first, nextBox)  // Calculate Intersection over Union
                 if (iou >= IOU_THRESHOLD) {
-                    iterator.remove()
+                    iterator.remove()  // Remove boxes with high overlap
                 }
             }
         }
@@ -171,23 +171,23 @@ class Detector (
         val y1 = maxOf(box1.y1, box2.y1)
         val x2 = minOf(box1.x2, box2.x2)
         val y2 = minOf(box1.y2, box2.y2)
-        val intersectionArea = maxOf(0F, x2 - x1) * maxOf(0F, y2 - y1)
+        val intersectionArea = maxOf(0F, x2 - x1) * maxOf(0F, y2 - y1)  // Calculate intersection area
         val box1Area = box1.w * box1.h
         val box2Area = box2.w * box2.h
-        return intersectionArea / (box1Area + box2Area - intersectionArea)
+        return intersectionArea / (box1Area + box2Area - intersectionArea)  // Calculate IoU
     }
 
     interface DetectorListener {
-        fun onEmptyDetect()
-        fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long)
+        fun onEmptyDetect()  // Callback for empty detection
+        fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long)  // Callback for detection results
     }
 
     companion object {
-        private const val INPUT_MEAN = 0f
-        private const val INPUT_STANDARD_DEVIATION = 255f
-        private val INPUT_IMAGE_TYPE = DataType.FLOAT32
-        private val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
-        private const val CONFIDENCE_THRESHOLD = 0.3F
-        private const val IOU_THRESHOLD = 0.5F
+        private const val INPUT_MEAN = 0f  // Input normalization mean
+        private const val INPUT_STANDARD_DEVIATION = 255f  // Input normalization standard deviation
+        private val INPUT_IMAGE_TYPE = DataType.FLOAT32  // Input image data type
+        private val OUTPUT_IMAGE_TYPE = DataType.FLOAT32  // Output image data type
+        private const val CONFIDENCE_THRESHOLD = 0.3F  // Confidence threshold for detection
+        private const val IOU_THRESHOLD = 0.5F  // IoU threshold for NMS
     }
 }
