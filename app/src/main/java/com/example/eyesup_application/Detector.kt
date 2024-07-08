@@ -35,6 +35,8 @@ class Detector (
         .add(CastOp(INPUT_IMAGE_TYPE))  // Cast image type
         .build()
 
+    private val tracker = Sort()  // Instantiate SORT tracker
+
     fun setup() {
         val model = FileUtil.loadMappedFile(context, modelPath)  // Load TFLite model
         val options = Interpreter.Options()
@@ -96,8 +98,20 @@ class Detector (
             return
         }
 
-        detectorListener.onDetect(bestBoxes, inferenceTime)  // Notify listener with detection results
+        // Track detections
+        val detections = bestBoxes.map {
+            Sort.Detection(it.x1, it.y1, it.x2, it.y2, it.cnf, it.cls)
+        }
+        val trackedBoxes = tracker.update(detections)
+
+        // Convert tracked boxes back to BoundingBox
+        val trackedBoundingBoxes = trackedBoxes.map {
+            BoundingBox(it.x1, it.y1, it.x2, it.y2, it.x1 + (it.x2 - it.x1) / 2, it.y1 + (it.y2 - it.y1) / 2, it.x2 - it.x1, it.y2 - it.y1, it.score, it.cls, labels[it.cls])
+        }
+
+        detectorListener.onDetect(trackedBoundingBoxes, inferenceTime)  // Notify listener with detection results
     }
+
 
     private fun bestBox(array: FloatArray): List<BoundingBox>? {
         val boundingBoxes = mutableListOf<BoundingBox>()
