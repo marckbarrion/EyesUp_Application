@@ -13,7 +13,7 @@ EyesUp is an Android application that uses YOLOv5 for real-time object detection
 
 1. Clone the repository:
     ```sh
-    git clone [https://github.com/your-username/EyesUp_Application.git](https://github.com/marckbarrion/EyesUp_Application)
+    git clone https://github.com/marckbarrion/EyesUp_Application.git
     ```
 
 2. Open the project in Android Studio.
