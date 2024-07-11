@@ -1,5 +1,7 @@
 package com.example.eyesup_application
 
+import android.graphics.Color  // Import Color class
+
 data class BoundingBox(
     val x1: Float,  // X-coordinate of the top-left corner
     val y1: Float,  // Y-coordinate of the top-left corner
@@ -11,5 +13,6 @@ data class BoundingBox(
     val h: Float,  // Height of the bounding box
     val cnf: Float,  // Confidence score of the detection
     val cls: Int,  // Class ID of the detected object
-    val clsName: String  // Class name of the detected object
+    val clsName: String,  // Class name of the detected object
+    var color: Int = Color.GREEN  // Color of the bounding box, default is green
 )

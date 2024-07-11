@@ -167,8 +167,35 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
     override fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long) {
         runOnUiThread {
             binding.inferenceTime.text = "${inferenceTime}ms"  // Display inference time
+
+            // Create a Sort instance to use the update and checkProximity methods
+            val sort = Sort()
+
+            // Update tracked boxes
+            val trackedBoxes = sort.update(boundingBoxes.map {
+                Sort.Detection(it.x1, it.y1, it.x2, it.y2, it.cnf, it.cls)
+            })
+
+            // Convert tracked boxes to BoundingBox objects
+            val boundingBoxList = trackedBoxes.map {
+                BoundingBox(
+                    it.x1, it.y1, it.x2, it.y2,
+                    (it.x1 + it.x2) / 2, (it.y1 + it.y2) / 2,
+                    it.x2 - it.x1, it.y2 - it.y1,
+                    it.score, it.cls, when (it.cls) {
+                        0 -> "person"
+                        1 -> "head"
+                        2 -> "cellphone"
+                        else -> "unknown"
+                    }
+                )
+            }
+
+            // Check proximity and update colors
+            val resultBoxes = sort.checkProximity(boundingBoxList)
+
             binding.overlay.apply {
-                setResults(boundingBoxes)  // Set detection results
+                setResults(resultBoxes)  // Set detection results
                 invalidate()  // Invalidate overlay to trigger redraw
             }
         }

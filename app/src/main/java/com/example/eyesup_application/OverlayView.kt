@@ -2,7 +2,7 @@ package com.example.eyesup_application
 
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.Color
+import android.graphics.Color  // Import Color class
 import android.graphics.Paint
 import android.graphics.Rect
 import android.util.AttributeSet
@@ -39,7 +39,6 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         textPaint.style = Paint.Style.FILL  // Set text style
         textPaint.textSize = 50f  // Set text size
 
-        boxPaint.color = ContextCompat.getColor(context!!, R.color.bounding_box_color)  // Set bounding box color
         boxPaint.strokeWidth = 8F  // Set bounding box stroke width
         boxPaint.style = Paint.Style.STROKE  // Set bounding box style
     }
@@ -53,9 +52,10 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
             val right = it.x2 * width  // Calculate right position
             val bottom = it.y2 * height  // Calculate bottom position
 
+            boxPaint.color = it.color  // Set the color for the bounding box
             canvas.drawRect(left, top, right, bottom, boxPaint)  // Draw bounding box
-            val drawableText = it.clsName  // Get class name to draw
 
+            val drawableText = it.clsName  // Get class name to draw
             textBackgroundPaint.getTextBounds(drawableText, 0, drawableText.length, bounds)  // Measure text bounds
             val textWidth = bounds.width()  // Get text width
             val textHeight = bounds.height()  // Get text height
