@@ -177,17 +177,18 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             })
 
             // Convert tracked boxes to BoundingBox objects
-            val boundingBoxList = trackedBoxes.map {
+            val boundingBoxList = trackedBoxes.map { track ->
                 BoundingBox(
-                    it.x1, it.y1, it.x2, it.y2,
-                    (it.x1 + it.x2) / 2, (it.y1 + it.y2) / 2,
-                    it.x2 - it.x1, it.y2 - it.y1,
-                    it.score, it.cls, when (it.cls) {
+                    track.x1, track.y1, track.x2, track.y2,
+                    (track.x1 + track.x2) / 2, (track.y1 + track.y2) / 2,
+                    track.x2 - track.x1, track.y2 - track.y1,
+                    track.score, track.cls, when (track.cls) {
                         0 -> "person"
                         1 -> "head"
                         2 -> "cellphone"
                         else -> "unknown"
-                    }
+                    },
+                    track.id  // Use the track ID for the bounding box
                 )
             }
 

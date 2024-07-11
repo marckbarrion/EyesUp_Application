@@ -104,14 +104,13 @@ class Detector (
         }
         val trackedBoxes = tracker.update(detections)
 
-        // Convert tracked boxes back to BoundingBox
+        // Convert tracked boxes back to BoundingBox with trackId
         val trackedBoundingBoxes = trackedBoxes.map {
-            BoundingBox(it.x1, it.y1, it.x2, it.y2, it.x1 + (it.x2 - it.x1) / 2, it.y1 + (it.y2 - it.y1) / 2, it.x2 - it.x1, it.y2 - it.y1, it.score, it.cls, labels[it.cls])
+            BoundingBox(it.x1, it.y1, it.x2, it.y2, it.x1 + (it.x2 - it.x1) / 2, it.y1 + (it.y2 - it.y1) / 2, it.x2 - it.x1, it.y2 - it.y1, it.score, it.cls, labels[it.cls], it.id)
         }
 
         detectorListener.onDetect(trackedBoundingBoxes, inferenceTime)  // Notify listener with detection results
     }
-
 
     private fun bestBox(array: FloatArray): List<BoundingBox>? {
         val boundingBoxes = mutableListOf<BoundingBox>()
@@ -147,7 +146,8 @@ class Detector (
                         h = h,
                         cnf = conf,
                         cls = clsIdx,
-                        clsName = clsName
+                        clsName = clsName,
+                        trackId = -1  // Temporary trackId placeholder
                     )
                 )
             }

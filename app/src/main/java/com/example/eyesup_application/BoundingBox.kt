@@ -14,5 +14,6 @@ data class BoundingBox(
     val cnf: Float,  // Confidence score of the detection
     val cls: Int,  // Class ID of the detected object
     val clsName: String,  // Class name of the detected object
+    val trackId: Int,  // Track ID from the Sort algorithm
     var color: Int = Color.GREEN  // Color of the bounding box, default is green
 )

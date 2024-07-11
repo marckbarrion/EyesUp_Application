@@ -55,7 +55,7 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
             boxPaint.color = it.color  // Set the color for the bounding box
             canvas.drawRect(left, top, right, bottom, boxPaint)  // Draw bounding box
 
-            val drawableText = it.clsName  // Get class name to draw
+            val drawableText = "ID: ${it.trackId}"  // Get track ID to draw
             textBackgroundPaint.getTextBounds(drawableText, 0, drawableText.length, bounds)  // Measure text bounds
             val textWidth = bounds.width()  // Get text width
             val textHeight = bounds.height()  // Get text height
