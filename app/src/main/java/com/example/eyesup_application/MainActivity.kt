@@ -1,9 +1,13 @@
+// MainActivity.kt
+
 package com.example.eyesup_application
 
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.graphics.Matrix
+import android.media.MediaPlayer
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,6 +27,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity(), Detector.DetectorListener {
+
     private lateinit var binding: ActivityMainBinding  // Initialize view binding
     private val isFrontCamera = false  // Set the default camera to back
 
@@ -33,6 +38,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
     private lateinit var detector: Detector  // Object detection instance
 
     private lateinit var cameraExecutor: ExecutorService  // Executor for camera operations
+    private lateinit var mediaPlayer: MediaPlayer  // Media player for detection audio
+    private lateinit var thankYouMediaPlayer: MediaPlayer  // Media player for end detection audio
+
+    private var isDetectionActive = false  // Flag to track detection state
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +50,9 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
         detector = Detector(baseContext, MODEL_PATH, LABELS_PATH, this)  // Initialize detector with model and labels
         detector.setup()  // Setup the detector
+
+        mediaPlayer = MediaPlayer.create(this, R.raw.eyes_up_walk_safely_tone)  // Initialize detection audio player
+        thankYouMediaPlayer = MediaPlayer.create(this, R.raw.thank_you_for_walk_safely_tone)  // Initialize end detection audio player
 
         if (allPermissionsGranted()) {
             startCamera()  // Start the camera if permissions are granted
@@ -141,6 +153,8 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         super.onDestroy()
         detector.clear()  // Clear detector resources
         cameraExecutor.shutdown()  // Shutdown camera executor
+        mediaPlayer.release()  // Release media player resources
+        thankYouMediaPlayer.release()  // Release thank you media player resources
     }
 
     override fun onResume() {
@@ -162,6 +176,14 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
     override fun onEmptyDetect() {
         binding.overlay.invalidate()  // Invalidate overlay on empty detection
+
+        // Check if a detection was previously active and now it's not
+        if (isDetectionActive) {
+            isDetectionActive = false  // Reset detection flag
+            if (!thankYouMediaPlayer.isPlaying) {
+                thankYouMediaPlayer.start()  // Play end detection audio
+            }
+        }
     }
 
     override fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long) {
@@ -194,6 +216,17 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
             // Check proximity and update colors
             val resultBoxes = sort.checkProximity(boundingBoxList)
+
+            // Check if any bounding box is red, indicating a cellphone near a head
+            val isPhoneDetectedNearHead = resultBoxes.any { it.color == Color.RED }
+
+            // Play audio if a phone is detected near a head
+            if (isPhoneDetectedNearHead) {
+                if (!mediaPlayer.isPlaying) {
+                    mediaPlayer.start()  // Play detection audio
+                }
+                isDetectionActive = true  // Set detection flag
+            }
 
             binding.overlay.apply {
                 setResults(resultBoxes)  // Set detection results
